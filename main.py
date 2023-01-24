@@ -1,10 +1,13 @@
 import os
 import re
 import shutil
+from collections import Counter
 from datetime import datetime
 
 import filedate
 from exif import Image
+
+count = Counter()
 
 SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png"]
 current_folder = os.getcwd()
@@ -82,6 +85,11 @@ def change_created_date(img_path, date):
     )
 
 
+def update_counter(is_success: bool):
+    count['success'] += is_success
+    count['error'] += (1 - is_success)
+
+
 def find_date_in_name(file, date_formats, _regex_pattern: list = None):
     file_name, file_extension = os.path.splitext(file)
     if _regex_pattern is None:
@@ -106,15 +114,13 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
 
 
 def exif_date_change(src_folder, dst_folder):
-    count = {
-        "success": 0,
-        "error": 0,
-    }
-    is_success = None
     date_formats = generate_date_time_formats()
     os.makedirs(dst_folder, exist_ok=True)
     for file in os.listdir(src_folder):
         file_name, file_extension = os.path.splitext(file)
+
+        if file_extension.lower() not in SUPPORTED_FORMATS:
+            continue
 
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
@@ -123,7 +129,7 @@ def exif_date_change(src_folder, dst_folder):
                     no_exif_folder = os.path.join(dst_folder, "NoExif")
                     os.makedirs(no_exif_folder, exist_ok=True)
                     destination = os.path.join(no_exif_folder, file)
-                    is_success = copy_image(file, destination)
+                    update_counter(copy_image(file, destination))
                 else:
                     date, time = img.datetime.split(' ')
                     img_exif_date = datetime.strptime(date + ' ' + time, "%Y:%m:%d %H:%M:%S")
@@ -133,7 +139,8 @@ def exif_date_change(src_folder, dst_folder):
                         "ext": file_extension,
                         "date": img_exif_date
                     }
-                    is_success = process_exif_image(img)
+                    update_counter(process_exif_image(img))
+
         elif file_extension.lower() == '.png':
             png_folder = os.path.join(dst_folder, "PngFiles")
             os.makedirs(png_folder, exist_ok=True)
@@ -143,17 +150,14 @@ def exif_date_change(src_folder, dst_folder):
             destination = os.path.join(png_folder, file)
             if not date:
                 message = f"{f'SUCCESS: {destination} image have been processed and saved BUT no date was found in the image name.'}"
-                is_success = copy_image(file, destination, message)
+                update_counter(copy_image(file, destination, message))
+
             elif date:
-                is_success = copy_image(file, destination)
+                update_counter(copy_image(file, destination))
                 change_created_date(destination, date)
         else:
             continue
 
-        if is_success:
-            count['success'] += 1
-        else:
-            count['error'] += 1
     print_final_count(count)
 
 
