@@ -149,7 +149,8 @@ def exif_date_change(src_folder, dst_folder):
 
             destination = os.path.join(png_folder, file)
             if not date:
-                message = f"{f'SUCCESS: {destination} image have been processed and saved BUT no date was found in the image name.'}"
+                message = f"{f'SUCCESS: {destination} image have been '}" \
+                            f"processed and saved BUT no date was found in the image name."
                 update_counter(copy_image(file, destination, message))
 
             elif date:
