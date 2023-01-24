@@ -34,14 +34,17 @@ def generate_date_time_formats():
     return date_time_formats
 
 
-def print_final_count(counter):
+def print_final_count(counter, _destination_folder):
     success_count, error_count = counter.values()
     print('\n')
-    print(
-        "\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} have been processed and '
-                       f'saved.' + "\033[0m")
-    print_error_message(
-        f'ERROR: {error_count} image{"s" if error_count != 1 else ""} already existed and were not overwritten.')
+    if success_count:
+        print("\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} have been processed '
+                             f'and saved successfully to the folder '
+                             f'\\{os.path.relpath(_destination_folder)}.' + "\033[0m")
+    if error_count:
+        print_error_message(
+            f'ERROR: {error_count} image{"s" if error_count != 1 else ""} already existed and were not overwritten. '
+            f'To overwrite the existing files, please enable the overwrite option in the user interface.')
 
 
 def print_error_message(msg):
@@ -166,17 +169,14 @@ def exif_date_change(src_folder, dst_folder):
 
             destination = os.path.join(png_folder, file)
             if not date:
-                message = f"{file} successfully copied to {os.path.relpath(destination)} BUT no date was " \
-                          f"found in the image name."
-                update_counter(copy_image(file, destination, message))
-
+                update_counter(copy_image(file, destination, True))
             elif date:
                 update_counter(copy_image(file, destination))
                 change_created_date(destination, date)
         else:
             continue
 
-    print_final_count(count)
+    print_final_count(count, destination_folder)
 
 
 exif_date_change(current_folder, destination_folder)
