@@ -1,10 +1,14 @@
 import os
 import re
 import shutil
+from collections import Counter
 from datetime import datetime
 
 import filedate
 from exif import Image
+
+count = Counter()
+overwrite = True
 
 SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png"]
 current_folder = os.getcwd()
@@ -30,15 +34,21 @@ def generate_date_time_formats():
     return date_time_formats
 
 
-def print_final_count(counter):
+def print_final_count(counter, _destination_folder):
     success_count, error_count = counter.values()
     print('\n')
-    print(
-        "\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} have been processed and '
-                       f'saved.' + "\033[0m")
-    print(
-        "\033[1;31m" + f'ERROR: {error_count} image{"s" if error_count != 1 else ""} already existed and were not '
-                       f'overwritten.' + "\033[0m")
+    if success_count:
+        print("\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} have been processed '
+                             f'and saved successfully to the folder '
+                             f'\\{os.path.relpath(_destination_folder)}.' + "\033[0m")
+    if error_count:
+        print_error_message(
+            f'ERROR: {error_count} image{"s" if error_count != 1 else ""} already existed and were not overwritten. '
+            f'To overwrite the existing files, please enable the overwrite option in the user interface.')
+
+
+def print_error_message(msg):
+    print(f"\033[1;31m{str(msg)}\033[0m")
 
 
 def extract_exif_date(file):
@@ -51,18 +61,31 @@ def extract_exif_date(file):
             return img.has_exif
 
 
-def copy_image(source, destination_name, custom_success_message=None):
+def copy_image(source, destination, no_date_found=False):
     try:
-        destination = os.path.join(destination_folder, destination_name)
+        destination = os.path.join(destination_folder, destination)
         os.makedirs(os.path.dirname(destination), exist_ok=True)
+        if os.path.exists(destination) and not overwrite:
+            raise FileExistsError(f"The file '{os.path.basename(destination)}' "
+                                  f"already exists at '{os.path.relpath(destination)}'.\n "
+                                  f"To overwrite the file, please enable the 'overwrite' option in the user interface.")
         shutil.copy2(source, destination)
-        if custom_success_message:
-            print(custom_success_message)
-        else:
-            print(f"{f'SUCCESS: {destination} image have been processed and saved.'}")
+        print(f"The file '{os.path.basename(source)}' has been copied to the directory '{os.path.dirname(destination)}'"
+              f"{' BUT no date was found in the image name.' if no_date_found else '.'}")
+
         return True
+    except FileExistsError as e:
+        print_error_message(e)
+        return False
     except Exception as e:
-        print("\033[1;31m" + f"An error occurred: {e} " + "\033[0m")
+        if "PermissionError" in str(e):
+            print_error_message(f"An error occurred with '{source}': {e}.\nPlease check if you have the permission "
+                                f"to access the destination folder.")
+        elif "No such file or directory" in str(e):
+            print_error_message(f"An error occurred with '{source}': {e}.\nPlease check if the source file path is "
+                                f"correct.")
+        else:
+            print_error_message(f"An error occurred with '{source}': {e}")
         return False
 
 
@@ -80,6 +103,11 @@ def change_created_date(img_path, date):
         created=date.strftime("%Y-%m-%d %H:%M:%S"),
         modified=date.strftime("%Y-%m-%d %H:%M:%S")
     )
+
+
+def update_counter(is_success: bool):
+    count['success'] += is_success
+    count['error'] += (1 - is_success)
 
 
 def find_date_in_name(file, date_formats, _regex_pattern: list = None):
@@ -106,15 +134,13 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
 
 
 def exif_date_change(src_folder, dst_folder):
-    count = {
-        "success": 0,
-        "error": 0,
-    }
-    is_success = None
     date_formats = generate_date_time_formats()
     os.makedirs(dst_folder, exist_ok=True)
     for file in os.listdir(src_folder):
         file_name, file_extension = os.path.splitext(file)
+
+        if file_extension.lower() not in SUPPORTED_FORMATS:
+            continue
 
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
@@ -123,7 +149,7 @@ def exif_date_change(src_folder, dst_folder):
                     no_exif_folder = os.path.join(dst_folder, "NoExif")
                     os.makedirs(no_exif_folder, exist_ok=True)
                     destination = os.path.join(no_exif_folder, file)
-                    is_success = copy_image(file, destination)
+                    update_counter(copy_image(file, destination))
                 else:
                     date, time = img.datetime.split(' ')
                     img_exif_date = datetime.strptime(date + ' ' + time, "%Y:%m:%d %H:%M:%S")
@@ -133,7 +159,8 @@ def exif_date_change(src_folder, dst_folder):
                         "ext": file_extension,
                         "date": img_exif_date
                     }
-                    is_success = process_exif_image(img)
+                    update_counter(process_exif_image(img))
+
         elif file_extension.lower() == '.png':
             png_folder = os.path.join(dst_folder, "PngFiles")
             os.makedirs(png_folder, exist_ok=True)
@@ -142,19 +169,14 @@ def exif_date_change(src_folder, dst_folder):
 
             destination = os.path.join(png_folder, file)
             if not date:
-                message = f"{f'SUCCESS: {destination} image have been processed and saved BUT no date was found in the image name.'}"
-                is_success = copy_image(file, destination, message)
+                update_counter(copy_image(file, destination, True))
             elif date:
-                is_success = copy_image(file, destination)
+                update_counter(copy_image(file, destination))
                 change_created_date(destination, date)
         else:
             continue
 
-        if is_success:
-            count['success'] += 1
-        else:
-            count['error'] += 1
-    print_final_count(count)
+    print_final_count(count, destination_folder)
 
 
 exif_date_change(current_folder, destination_folder)
