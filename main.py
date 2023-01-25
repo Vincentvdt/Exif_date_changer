@@ -6,6 +6,7 @@ from datetime import datetime
 import pyinputplus as pyip
 import filedate
 from exif import Image
+
 # Name : Timekeeper
 # Description : Keep your photos easily accessible and say goodbye to cluttered folders. "
 
@@ -81,7 +82,7 @@ def copy_image(source, destination_name, no_date_found=False):
         destination = os.path.join(destination_folder, destination_name)
         os.makedirs(os.path.dirname(destination), exist_ok=True)
         if os.path.exists(destination) and not overwrite:
-            raise FileExistsError(f"The file '{os.path.basename(destination)}' "
+            raise FileExistsError(f"'{os.path.basename(destination)}' "
                                   f"already exists at '{os.path.relpath(destination)}'.\n "
                                   f"To overwrite the file, please enable the 'overwrite' option in the user interface.")
         shutil.copy2(source, destination)
@@ -113,6 +114,14 @@ def process_exif_image(img):
     destination = os.path.join(destination_folder, name)
     change_created_date(destination, img["date"])
     return is_success
+
+
+def process_png_image(file, destination, date):
+    if not date:
+        update_counter(copy_image(file, destination, True))
+    elif date:
+        update_counter(copy_image(file, destination))
+        change_created_date(destination, date)
 
 
 def change_created_date(img_path, date):
@@ -151,21 +160,26 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
             break
 
 
+def check_extension(file):
+    file_name, file_extension = os.path.splitext(file)
+    try:
+        if file_extension.lower() not in SUPPORTED_FORMATS:
+            raise ValueError(f"{file} : We don't support {f'the {file_extension}' if file_extension else 'this'} "
+                             f"extension. Supported formats are {SUPPORTED_FORMATS}")
+    except ValueError as e:
+        print(e)
+
+
 def exif_date_change(src_folder, dst_folder):
     date_formats = generate_date_time_formats()
     os.makedirs(dst_folder, exist_ok=True)
     for file in os.listdir(src_folder):
         file_name, file_extension = os.path.splitext(file)
 
-        if not os.path.isfile(file):
+        if not os.path.isfile(file) :
             continue
-        try:
-            if file_extension.lower() not in SUPPORTED_FORMATS:
-                raise ValueError(f"{file} : We don't support {f'the {file_extension}' if file_extension else 'this'} extension. Supported"
-                                 f" formats are {SUPPORTED_FORMATS}")
-            # rest of your code here
-        except ValueError as e:
-            print(e)
+        else:
+            check_extension(file)
 
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
@@ -193,11 +207,7 @@ def exif_date_change(src_folder, dst_folder):
             date = find_date_in_name(file, date_formats)
 
             destination = os.path.join(png_folder, file)
-            if not date:
-                update_counter(copy_image(file, destination, True))
-            elif date:
-                update_counter(copy_image(file, destination))
-                change_created_date(destination, date)
+            process_png_image(file, destination, date)
         else:
             continue
 
