@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 
+img_name = "img.PNG"
 dates = [
     "2023_05_23.15_05_25",
     "2023_05_23-15_05_25",
@@ -80,4 +81,4 @@ def save_images(image_path, names):
 
 
 # Example usage
-save_images("img.png", dates)
+save_images(img_name, dates)

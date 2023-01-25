@@ -3,12 +3,18 @@ import re
 import shutil
 from collections import Counter
 from datetime import datetime
-
+import pyinputplus as pyip
 import filedate
 from exif import Image
 
+
 count = Counter()
-overwrite = True
+overwrite = pyip.inputYesNo(prompt="Overwrite [Y/n]")
+
+if overwrite == "yes":
+    overwrite = True
+elif overwrite == "no":
+    overwrite = False
 
 SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png"]
 current_folder = os.getcwd()
@@ -61,9 +67,9 @@ def extract_exif_date(file):
             return img.has_exif
 
 
-def copy_image(source, destination, no_date_found=False):
+def copy_image(source, destination_name, no_date_found=False):
     try:
-        destination = os.path.join(destination_folder, destination)
+        destination = os.path.join(destination_folder, destination_name)
         os.makedirs(os.path.dirname(destination), exist_ok=True)
         if os.path.exists(destination) and not overwrite:
             raise FileExistsError(f"The file '{os.path.basename(destination)}' "
@@ -139,8 +145,15 @@ def exif_date_change(src_folder, dst_folder):
     for file in os.listdir(src_folder):
         file_name, file_extension = os.path.splitext(file)
 
-        if file_extension.lower() not in SUPPORTED_FORMATS:
+        if not os.path.isfile(file):
             continue
+        try:
+            if file_extension.lower() not in SUPPORTED_FORMATS:
+                raise ValueError(f"We don't support the {file_extension} extension yet. Supported"
+                                 f" formats are {SUPPORTED_FORMATS}")
+            # rest of your code here
+        except ValueError as e:
+            print("Error: ", e)
 
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
@@ -180,3 +193,4 @@ def exif_date_change(src_folder, dst_folder):
 
 
 exif_date_change(current_folder, destination_folder)
+input("Press enter to proceed...")
