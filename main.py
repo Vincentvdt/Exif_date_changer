@@ -6,15 +6,24 @@ from datetime import datetime
 import pyinputplus as pyip
 import filedate
 from exif import Image
-
+# Name : Timekeeper
+# Description : Keep your photos easily accessible and say goodbye to cluttered folders. "
 
 count = Counter()
-overwrite = pyip.inputYesNo(prompt="Overwrite [Y/n]")
+overwrite = pyip.inputYesNo(prompt="Do you want to activate the overwrite option : [Y/n]")
 
 if overwrite == "yes":
     overwrite = True
 elif overwrite == "no":
     overwrite = False
+
+rename = pyip.inputYesNo(prompt="Dou you want to rename the file if a date is found in the exif data (only for .jpg "
+                                "and .jpeg) [Y/n]")
+
+if rename == "yes":
+    rename = True
+elif rename == "no":
+    rename = False
 
 SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png"]
 current_folder = os.getcwd()
@@ -96,7 +105,10 @@ def copy_image(source, destination_name, no_date_found=False):
 
 
 def process_exif_image(img):
-    name = f'{img["date"].strftime("%Y-%m-%d_%H-%M-%S")}_{img["name"]}{img["ext"]}'
+    if rename:
+        name = f'{img["date"].strftime("%Y-%m-%d_%H-%M-%S")}_{img["name"]}{img["ext"]}'
+    else:
+        name = img["file"]
     is_success = copy_image(img["file"], name)
     destination = os.path.join(destination_folder, name)
     change_created_date(destination, img["date"])
@@ -149,11 +161,11 @@ def exif_date_change(src_folder, dst_folder):
             continue
         try:
             if file_extension.lower() not in SUPPORTED_FORMATS:
-                raise ValueError(f"We don't support the {file_extension} extension yet. Supported"
+                raise ValueError(f"{file} : We don't support {f'the {file_extension}' if file_extension else 'this'} extension. Supported"
                                  f" formats are {SUPPORTED_FORMATS}")
             # rest of your code here
         except ValueError as e:
-            print("Error: ", e)
+            print(e)
 
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
