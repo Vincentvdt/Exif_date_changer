@@ -6,6 +6,7 @@ from datetime import datetime
 import pyinputplus as pyip
 import filedate
 from exif import Image
+from tqdm import tqdm
 
 # Name : Timekeeper
 # Description : Keep your photos easily accessible and say goodbye to cluttered folders. "
@@ -143,11 +144,14 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
     file_name, file_extension = os.path.splitext(file)
     if _regex_pattern is None:
         _regex_pattern = [
-            r"(^\d{4}[-._]\d{2}[-._]\d{2}(?:[-._]\d{2}[-._]\d{2}[-._]\d{2})?)",
-            r"(^\d{4}[-._]\d{2}[-._]\d{2}(?:[-._]\d{6})?)",
-            r"(^\d{8}(?:[-._]\d{2}[-._]\d{2}[-._]\d{2})?)",
-            r"(^\d{8}(?:[-._]\d{6})?)",
+            r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
+            r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{6})",
+            r"(\d{8}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
+            r"(\d{8}[-._]\d{6})",
+            r"(\d{4}[-._]\d{2}[-._]\d{2})",
+            r"(\d{4}[-._]\d{2}[-._]\d{2})",
             r"(\d{14})"
+            r"(\d{8})",
         ]
     for pattern in _regex_pattern:
         match = re.search(pattern, file_name)
@@ -159,7 +163,7 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
                 except ValueError:
                     continue
         if not match:
-            break
+            continue
 
 
 def check_extension(file):
@@ -172,25 +176,36 @@ def check_extension(file):
         print(e)
 
 
+def process_no_exif_image(file, dst_folder, date_formats):
+    no_exif_folder = os.path.join(dst_folder, "NoExif")
+    os.makedirs(no_exif_folder, exist_ok=True)
+    date = find_date_in_name(file, date_formats)
+    if date:
+        destination = os.path.join(no_exif_folder, file)
+        is_success = copy_image(file, destination)
+        change_created_date(destination, date)
+    else:
+        no_exif_and_date_folder = os.path.join(no_exif_folder, "NoDate")
+        os.makedirs(no_exif_and_date_folder, exist_ok=True)
+        destination = os.path.join(no_exif_and_date_folder, file)
+        is_success = copy_image(file, destination)
+    return is_success
+
+
 def exif_date_change(src_folder, dst_folder):
     date_formats = generate_date_time_formats()
     os.makedirs(dst_folder, exist_ok=True)
-    for file in os.listdir(src_folder):
+    files = [file for file in os.listdir(src_folder) if os.path.isfile(file) and '.' in os.path.basename(file)]
+    file_count = len(files)
+    print(file_count)
+    for file in files:
         file_name, file_extension = os.path.splitext(file)
-
-        if not os.path.isfile(file):
-            continue
-        else:
-            check_extension(file)
-
+        check_extension(file)
         if file_extension.lower() in (".jpg", ".jpeg"):
             with open(file, 'rb'):
                 img = Image(file)
                 if not img.has_exif:
-                    no_exif_folder = os.path.join(dst_folder, "NoExif")
-                    os.makedirs(no_exif_folder, exist_ok=True)
-                    destination = os.path.join(no_exif_folder, file)
-                    update_counter(copy_image(file, destination))
+                    update_counter(process_no_exif_image(file, dst_folder, date_formats))
                 else:
                     date, time = img.datetime.split(' ')
                     img_exif_date = datetime.strptime(date + ' ' + time, "%Y:%m:%d %H:%M:%S")
