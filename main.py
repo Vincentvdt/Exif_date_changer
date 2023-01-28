@@ -1,3 +1,7 @@
+# Name : Timekeeper
+# Description : Keep your photos easily accessible and say goodbye to cluttered folders. "
+
+
 import os
 import re
 import shutil
@@ -6,10 +10,6 @@ from datetime import datetime
 import pyinputplus as pyip
 import filedate
 from exif import Image
-from tqdm import tqdm
-
-# Name : Timekeeper
-# Description : Keep your photos easily accessible and say goodbye to cluttered folders. "
 
 count = Counter()
 overwrite = pyip.inputYesNo(prompt="Do you want to activate the overwrite option : [Y/n]")
@@ -30,14 +30,16 @@ elif rename == "no":
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
 
-current_folder = os.getcwd()
-destination_folder = os.path.join(current_folder, "Pictures")
+source_folder = os.getcwd()
+destination_folder = os.path.join(source_folder, "Pictures")
 regex_pattern = [
-    r"(^\d{4}[-._]\d{2}[-._]\d{2}(?:[-._]\d{2}[-._]\d{2}[-._]\d{2})?)",
-    r"(^\d{4}[-._]\d{2}[-._]\d{2}(?:[-._]\d{6})?)",
-    r"(^\d{8}(?:[-._]\d{2}[-._]\d{2}[-._]\d{2})?)",
-    r"(^\d{8}(?:[-._]\d{6})?)",
+    r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
+    r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{6})",
+    r"(\d{8}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
+    r"(\d{8}[-._]\d{6})",
+    r"(\d{4}[-._]\d{2}[-._]\d{2})",
     r"(\d{14})"
+    r"(\d{8})",
 ]
 
 
@@ -70,17 +72,7 @@ def print_error_message(msg):
     print(f"\033[1;31m{str(msg)}\033[0m")
 
 
-def extract_exif_date(file):
-    with open(file, 'rb'):
-        img = Image(file)
-        if img.has_exif:
-            date, time = img.datetime.split(' ')
-            return datetime.strptime(date + ' ' + time, "%Y:%m:%d %H:%M:%S")
-        else:
-            return img.has_exif
-
-
-def copy_image(source, destination_name, no_date_found=False):
+def copy_image_to_folder(source, destination_name, no_date_found=False):
     try:
         destination = os.path.join(destination_folder, destination_name)
         os.makedirs(os.path.dirname(destination), exist_ok=True)
@@ -113,7 +105,7 @@ def process_exif_image(img):
         name = f'{img["date"].strftime(name_date_format)}_{img["name"]}{img["ext"]}'
     else:
         name = img["file"]
-    is_success = copy_image(img["file"], name)
+    is_success = copy_image_to_folder(img["file"], name)
     destination = os.path.join(destination_folder, name)
     change_created_date(destination, img["date"])
     return is_success
@@ -121,9 +113,9 @@ def process_exif_image(img):
 
 def process_png_image(file, destination, date):
     if not date:
-        update_counter(copy_image(file, destination, True))
+        update_counter(copy_image_to_folder(file, destination, True))
     elif date:
-        update_counter(copy_image(file, destination))
+        update_counter(copy_image_to_folder(file, destination))
         change_created_date(destination, date)
 
 
@@ -148,7 +140,6 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
             r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{6})",
             r"(\d{8}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
             r"(\d{8}[-._]\d{6})",
-            r"(\d{4}[-._]\d{2}[-._]\d{2})",
             r"(\d{4}[-._]\d{2}[-._]\d{2})",
             r"(\d{14})"
             r"(\d{8})",
@@ -182,13 +173,13 @@ def process_no_exif_image(file, dst_folder, date_formats):
     date = find_date_in_name(file, date_formats)
     if date:
         destination = os.path.join(no_exif_folder, file)
-        is_success = copy_image(file, destination)
+        is_success = copy_image_to_folder(file, destination)
         change_created_date(destination, date)
     else:
         no_exif_and_date_folder = os.path.join(no_exif_folder, "NoDate")
         os.makedirs(no_exif_and_date_folder, exist_ok=True)
         destination = os.path.join(no_exif_and_date_folder, file)
-        is_success = copy_image(file, destination)
+        is_success = copy_image_to_folder(file, destination)
     return is_success
 
 
@@ -231,5 +222,5 @@ def exif_date_change(src_folder, dst_folder):
     print_final_count(count, destination_folder)
 
 
-exif_date_change(current_folder, destination_folder)
+exif_date_change(source_folder, destination_folder)
 input("Press enter to proceed...")
