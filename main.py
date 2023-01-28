@@ -26,7 +26,9 @@ if rename == "yes":
 elif rename == "no":
     rename = False
 
-SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png"]
+SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
+name_date_format = "%Y-%m-%d_%H-%M-%S"
+
 current_folder = os.getcwd()
 destination_folder = os.path.join(current_folder, "Pictures")
 regex_pattern = [
@@ -107,7 +109,7 @@ def copy_image(source, destination_name, no_date_found=False):
 
 def process_exif_image(img):
     if rename:
-        name = f'{img["date"].strftime("%Y-%m-%d_%H-%M-%S")}_{img["name"]}{img["ext"]}'
+        name = f'{img["date"].strftime(name_date_format)}_{img["name"]}{img["ext"]}'
     else:
         name = img["file"]
     is_success = copy_image(img["file"], name)
@@ -163,9 +165,9 @@ def find_date_in_name(file, date_formats, _regex_pattern: list = None):
 def check_extension(file):
     file_name, file_extension = os.path.splitext(file)
     try:
-        if file_extension.lower() not in SUPPORTED_FORMATS:
+        if file_extension.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError(f"{file} : We don't support {f'the {file_extension}' if file_extension else 'this'} "
-                             f"extension. Supported formats are {SUPPORTED_FORMATS}")
+                             f"extension. Supported formats are {SUPPORTED_EXTENSIONS}")
     except ValueError as e:
         print(e)
 
@@ -176,7 +178,7 @@ def exif_date_change(src_folder, dst_folder):
     for file in os.listdir(src_folder):
         file_name, file_extension = os.path.splitext(file)
 
-        if not os.path.isfile(file) :
+        if not os.path.isfile(file):
             continue
         else:
             check_extension(file)
