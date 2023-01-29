@@ -1,10 +1,10 @@
-# File name : my_script.py
-# Created by : John Doe
+# File name : main.py
+# Name : Timekeeper
+# Created by : Vincent Vidot
 # Date created : January 29, 2023.
 # Description : This script does something cool
 #
 # Special thanks to ChatGPT for providing helpful information and support during the development of this script
-
 
 
 import os
@@ -20,9 +20,8 @@ from tqdm import tqdm
 
 count = Counter()
 
-overwrite = True if pyip.inputYesNo(prompt="Do you want to activate the overwrite option : [Y/n]") == "yes" else False
-rename = True if pyip.inputYesNo(prompt="Dou you want to rename the file if a date is found in the exif data "
-                                        "(only for .jpg and .jpeg) [Y/n]") == "yes" else False
+overwrite = True if pyip.inputYesNo(prompt="Activate overwrite option ? [Y/n]") == "yes" else False
+rename = True if pyip.inputYesNo(prompt="Rename file if exif date is found [Y/n]") == "yes" else False
 
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
@@ -61,20 +60,18 @@ date_formats = generate_date_time_formats()
 def handle_errors():
     now = datetime.now()
     file_name = f"error_log_{now.year}-{now.month}-{now.day}.txt"
-    if len(errors) > 20:
-        display_error = pyip.inputYesNo(prompt="Do you want to display the errors "
-                                               "despite the high number of them? [Y/n]")
-        create_file = pyip.inputYesNo(prompt="Do you want to save the errors in a text file? [Y/n]")
-        if display_error == "yes":
-            for error in errors:
-                print(error)
-        if create_file == "yes":
-            with open(file_name, "w") as f:
-                f.write("\n".join(errors))
-            print(f"File created at {file_name} in {os.path.basename(source_folder)}!")
-    else:
+    display_error = "yes" if len(errors) <= 20 else pyip.inputYesNo(prompt="Do you want to display the errors despite "
+                                                                           "the high number of them? [Y/n]")
+    if display_error == "yes":
         for error in errors:
-            print(error)
+            print(f"    {error}")
+
+    create_file = pyip.inputYesNo(prompt="Do you want to save the errors in a text file? [Y/n]")
+    if create_file == "yes":
+        with open(file_name, "w") as f:
+            f.write("\n".join(errors))
+
+        print(f"File created at {file_name} in {os.path.basename(source_folder)}!")
 
 
 def print_final_count(counter, _destination_folder):
@@ -82,9 +79,8 @@ def print_final_count(counter, _destination_folder):
     print("", end='\r')
 
     if success_count:
-        print("\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} have been processed '
-                             f'and saved successfully to the folder '
-                             f'\\{os.path.relpath(_destination_folder)}.' + "\033[0m")
+        print("\033[1;32m" + f'SUCCESS: {success_count} image{"s" if success_count != 1 else ""} processed '
+                             f'successfully. Saved to \\{os.path.relpath(_destination_folder)} folder.' + "\033[0m")
     if error_count:
         print("\033[1;31m" + f'ERROR: {error_count} file{"s" if error_count != 1 else ""} encountered errors during '
                              f'processing : ' + "\033[0m")
@@ -101,15 +97,14 @@ def check_extension(file):
     file_name, file_extension = os.path.splitext(file)
     try:
         if file_extension.lower() not in SUPPORTED_EXTENSIONS:
-            raise ValueError(f"{file} : We don't support {f'the {file_extension}' if file_extension else 'this'} "
-                             f"extension. Supported formats are {SUPPORTED_EXTENSIONS}")
+            raise ValueError(f"{file} : Invalid file format. Supported formats: {SUPPORTED_EXTENSIONS}")
     except ValueError as e:
         # print(e)
         update_counter(False)
         errors.append(str(e))
 
 
-def copy_image_to_folder(source, destination_name, no_date_found=False):
+def copy_image_to_folder(source, destination_name):
     try:
         img_destination_path = os.path.join(destination_folder, destination_name)
         os.makedirs(os.path.dirname(img_destination_path), exist_ok=True)
@@ -229,15 +224,10 @@ def process_png_image(image, dst_folder):
     date = find_date_in_name(image, date_formats)
     img_destination_path = os.path.join(png_folder, image)
     if not date:
-        update_counter(copy_image_to_folder(image, img_destination_path, True))
+        update_counter(copy_image_to_folder(image, img_destination_path))
     elif date:
         update_counter(copy_image_to_folder(image, img_destination_path))
         change_created_date(date, img_destination_path)
-
-
-def display_message(file):
-    current_file = file
-    print(f"Current file: {current_file}", end="\r")
 
 
 def exif_date_change(src_folder, dst_folder):
@@ -246,7 +236,6 @@ def exif_date_change(src_folder, dst_folder):
     pbar = tqdm(files)
     for file in pbar:
         pbar.set_description("Processing file {}".format(file), refresh=True)
-
         file_name, file_extension = os.path.splitext(file)
         check_extension(file)
         if file_extension.lower() in (".jpg", ".jpeg"):
@@ -255,6 +244,7 @@ def exif_date_change(src_folder, dst_folder):
             process_png_image(file, dst_folder)
         else:
             continue
+
     print_final_count(count, destination_folder)
 
 
