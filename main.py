@@ -10,6 +10,7 @@
 import os
 import re
 import shutil
+import time
 from collections import Counter
 from datetime import datetime
 
@@ -204,11 +205,11 @@ def process_jpg_image(image, dst_folder):
     with open(image, 'rb'):
         img = Image(image)
         image_name, image_extension = os.path.splitext(image)
-        if not img.has_exif:
+        if not img.has_exif or not hasattr(img, "datetime"):
             update_counter(process_no_exif_image(image, dst_folder))
         else:
-            date, time = img.datetime.split(' ')
-            img_exif_date = datetime.strptime(date + ' ' + time, "%Y:%m:%d %H:%M:%S")
+            _date, _time = img.datetime.split(' ')
+            img_exif_date = datetime.strptime(_date + ' ' + _time, "%Y:%m:%d %H:%M:%S")
             img = {
                 "image": image,
                 "name": image_name,
@@ -221,7 +222,7 @@ def process_jpg_image(image, dst_folder):
 def process_png_image(image, dst_folder):
     png_folder = os.path.join(dst_folder, "PngFiles")
     os.makedirs(png_folder, exist_ok=True)
-    date = find_date_in_name(image, date_formats)
+    date = find_date_in_name(image)
     img_destination_path = os.path.join(png_folder, image)
     if not date:
         update_counter(copy_image_to_folder(image, img_destination_path))
@@ -233,9 +234,14 @@ def process_png_image(image, dst_folder):
 def exif_date_change(src_folder, dst_folder):
     os.makedirs(dst_folder, exist_ok=True)
     files = [file for file in os.listdir(src_folder) if os.path.isfile(os.path.join(src_folder, file))]
-    pbar = tqdm(files)
+    if "Timekeeper.exe" in files:
+        files.remove("Timekeeper.exe")
+    pbar = tqdm(files, leave=True, smoothing=1)
     for file in pbar:
-        pbar.set_description("Processing file {}".format(file), refresh=True)
+        # time.sleep(0.05)
+        # pbar.set_description("Processing file {}".format(file), refresh=True)
+        pbar.set_description("Progress", refresh=True)
+        pbar.set_postfix(file="{}".format(file))
         file_name, file_extension = os.path.splitext(file)
         check_extension(file)
         if file_extension.lower() in (".jpg", ".jpeg"):
