@@ -23,6 +23,9 @@ count = Counter()
 
 overwrite = True if pyip.inputYesNo(prompt="Activate overwrite option ? [Y/n]") == "yes" else False
 rename = True if pyip.inputYesNo(prompt="Rename file if exif date is found [Y/n]") == "yes" else False
+sort = True if pyip.inputYesNo(prompt="Do you want to organize your pictures by years [Y/n]") == "yes" else False
+separate = True if pyip.inputYesNo(
+    prompt="Do you want to separate PNG pictures into an other folder ? [Y/n]") == "yes" else False
 
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
@@ -113,10 +116,6 @@ def copy_image_to_folder(source, destination_name):
             raise FileExistsError(f"'{os.path.basename(img_destination_path)}' "
                                   f"already exists at '{os.path.relpath(img_destination_path)}'.")
         shutil.copy2(source, img_destination_path)
-        # print(f"The file '{os.path.basename(source)}' has been copied to "
-        #       f"the directory '{os.path.dirname(img_destination_path)}'"
-        #       f"{' BUT no date was found in the image name.' if no_date_found else '.'}")
-
         return True
     except FileExistsError as e:
         print_error_message(e)
@@ -193,7 +192,6 @@ def process_exif_image(img, dst_folder):
         name = f'{date.strftime(name_date_format)}_{name}{ext}'
     else:
         name = image
-
     is_success = copy_image_to_folder(image, name)
     img_destination_path = os.path.join(dst_folder, name)
     change_created_date(date, img_destination_path)
@@ -220,14 +218,16 @@ def process_jpg_image(image, dst_folder):
 
 
 def process_png_image(image, dst_folder):
-    png_folder = os.path.join(dst_folder, "PngFiles")
-    os.makedirs(png_folder, exist_ok=True)
+    if separate:
+        dst_folder = os.path.join(dst_folder, "PngFiles")
+        os.makedirs(dst_folder, exist_ok=True)
+
+    img_destination_path = os.path.join(dst_folder, image)
     date = find_date_in_name(image)
-    img_destination_path = os.path.join(png_folder, image)
-    if not date:
-        update_counter(copy_image_to_folder(image, img_destination_path))
-    elif date:
-        update_counter(copy_image_to_folder(image, img_destination_path))
+
+    update_counter(copy_image_to_folder(image, img_destination_path))
+
+    if date:
         change_created_date(date, img_destination_path)
 
 
@@ -238,8 +238,6 @@ def exif_date_change(src_folder, dst_folder):
         files.remove("Timekeeper.exe")
     pbar = tqdm(files, leave=True, smoothing=1)
     for file in pbar:
-        # time.sleep(0.05)
-        # pbar.set_description("Processing file {}".format(file), refresh=True)
         pbar.set_description("Progress", refresh=True)
         pbar.set_postfix(file="{}".format(file))
         file_name, file_extension = os.path.splitext(file)
