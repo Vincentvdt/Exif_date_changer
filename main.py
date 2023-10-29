@@ -10,7 +10,6 @@
 import os
 import re
 import shutil
-import time
 from collections import Counter
 from datetime import datetime
 
@@ -35,18 +34,9 @@ SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
 
 
-source_folder = os.getcwd();
+source_folder = os.getcwd()
 destination_folder = os.path.join(source_folder, "Pictures")
 
-regex_pattern = [
-    r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
-    r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{6})",
-    r"(\d{8}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
-    r"(\d{8}[-._]\d{6})",
-    r"(\d{4}[-._]\d{2}[-._]\d{2})",
-    r"(\d{14})"
-    r"(\d{8})",
-]
 
 errors = []
 
@@ -54,13 +44,19 @@ errors = []
 def generate_date_time_formats():
     separators = ['-', '.', '_', '']
     _date_formats = [f"%Y{sep}%m{sep}%d" for sep in separators]
+    _date_formats += [f"%d{sep}%m{sep}%Y" for sep in separators]
+
     time_formats = [f"%H{sep}%M{sep}%S" for sep in separators]
-    date_time_formats = [f"{date_format}{separator}{time_format}" for date_format in _date_formats for separator in separators for time_format in time_formats]
+    date_time_formats = [f"{_date_format}{separator}{time_format}" for _date_format in _date_formats for separator in
+                         separators for time_format in time_formats]
     date_time_formats += _date_formats
     return date_time_formats
 
 
 date_formats = generate_date_time_formats()
+# with open('test.txt', "w") as f:
+#     for date_format in date_formats:
+#         f.write(date_format + '\n')
 
 
 def handle_errors():
@@ -74,8 +70,8 @@ def handle_errors():
 
     create_file = pyip.inputYesNo(prompt="Do you want to save the errors in a text file? [Y/n]")
     if create_file == "yes":
-        with open(file_name, "w") as f:
-            f.write("\n".join(errors))
+        with open(file_name, "w") as _f:
+            _f.write("\n".join(errors))
 
         print(f"File created at {file_name} in {os.path.basename(source_folder)}!")
 
@@ -95,7 +91,6 @@ def print_final_count(counter, _destination_folder):
 
 def print_error_message(msg):
     msg = f"\033[1;31m{str(msg)}\033[0m"
-    # print(msg)
     errors.append(msg)
 
 
@@ -105,14 +100,13 @@ def check_extension(file):
         if file_extension.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError(f"{file} : Invalid file format. Supported formats: {SUPPORTED_EXTENSIONS}")
     except ValueError as e:
-        # print(e)
         update_counter(False)
         errors.append(str(e))
 
 
-def copy_image_to_folder(source, destination_name):
+def copy_image_to_folder(source, img_destination_path):
+
     try:
-        img_destination_path = os.path.join(destination_folder, destination_name)
         os.makedirs(os.path.dirname(img_destination_path), exist_ok=True)
         if os.path.exists(img_destination_path) and not overwrite:
             raise FileExistsError(f"'{os.path.basename(img_destination_path)}' "
@@ -147,19 +141,21 @@ def update_counter(is_success: bool):
     count['error'] += (1 - is_success)
 
 
-def find_date_in_name(file, _regex_pattern: list = None):
+def find_date_in_name(file):
     file_name, file_extension = os.path.splitext(file)
-    if _regex_pattern is None:
-        _regex_pattern = [
+    regex_pattern = [
             r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
+            r"(\d{2}[-._]\d{2}[-._]\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
             r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{6})",
+            r"(\d{2}[-._]\d{2}[-._]\d{4}[-._]\d{6})",
             r"(\d{8}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
             r"(\d{8}[-._]\d{6})",
             r"(\d{4}[-._]\d{2}[-._]\d{2})",
-            r"(\d{14})"
+            r"(\d{2}[-._]\d{2}[-._]\d{4})",
+            r"(\d{14})",
             r"(\d{8})",
         ]
-    for pattern in _regex_pattern:
+    for pattern in regex_pattern:
         match = re.search(pattern, file_name)
         if match:
             matched_string = match.group(1)
@@ -177,6 +173,10 @@ def process_no_exif_image(file):
     os.makedirs(no_exif_folder, exist_ok=True)
     date = find_date_in_name(file)
     if date:
+        if sort:
+            no_exif_folder = os.path.join(no_exif_folder, str(date.year))
+            os.makedirs(no_exif_folder, exist_ok=True)
+
         img_destination_path = os.path.join(no_exif_folder, file)
         is_success = copy_image_to_folder(file, img_destination_path)
         change_created_date(date, img_destination_path)
@@ -190,12 +190,18 @@ def process_no_exif_image(file):
 
 def process_exif_image(img):
     image, name, ext, date = img.values()
+    dist_folder = destination_folder
     if rename:
         name = f'{date.strftime(name_date_format)}_{name}{ext}'
     else:
         name = image
-    is_success = copy_image_to_folder(image, name)
-    img_destination_path = os.path.join(destination_folder, name)
+
+    if sort:
+        dist_folder = os.path.join(destination_folder, str(date.year))
+        os.makedirs(dist_folder, exist_ok=True)
+
+    img_destination_path = os.path.join(dist_folder, name)
+    is_success = copy_image_to_folder(image, img_destination_path)
     change_created_date(date, img_destination_path)
 
     return is_success
@@ -221,13 +227,17 @@ def process_jpg_image(image):
 
 def process_png_image(image):
     dst_folder = destination_folder
+    date = find_date_in_name(image)
+
     if separate:
         dst_folder = os.path.join(dst_folder, "PngFiles")
         os.makedirs(dst_folder, exist_ok=True)
 
-    img_destination_path = os.path.join(dst_folder, image)
-    date = find_date_in_name(image)
+    if date and sort:
+        dst_folder = os.path.join(dst_folder, str(date.year))
+        os.makedirs(dst_folder, exist_ok=True)
 
+    img_destination_path = os.path.join(dst_folder, image)
     update_counter(copy_image_to_folder(image, img_destination_path))
 
     if date:
