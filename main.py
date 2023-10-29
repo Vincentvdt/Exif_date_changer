@@ -21,11 +21,15 @@ from tqdm import tqdm
 
 count = Counter()
 
-overwrite = True if pyip.inputYesNo(prompt="Activate overwrite option ? [Y/n]") == "yes" else False
-rename = True if pyip.inputYesNo(prompt="Rename file if exif date is found [Y/n]") == "yes" else False
-sort = True if pyip.inputYesNo(prompt="Do you want to organize your pictures by years [Y/n]") == "yes" else False
-separate = True if pyip.inputYesNo(
-    prompt="Do you want to separate PNG pictures into an other folder ? [Y/n]") == "yes" else False
+
+def get_user_input(prompt):
+    return True if pyip.inputYesNo(prompt=prompt) == "yes" else False
+
+
+overwrite = get_user_input("Activate overwrite option ? [Y/n]")
+rename = get_user_input("Rename file if exif date is found [Y/n]")
+sort = get_user_input("Do you want to organize your pictures by years [Y/n]")
+separate = get_user_input("Do you want to separate PNG pictures into an other folder ? [Y/n]")
 
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
