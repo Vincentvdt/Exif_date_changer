@@ -60,9 +60,6 @@ def generate_date_time_formats():
 
 
 date_formats = generate_date_time_formats()
-# with open('test.txt', "w") as f:
-#     for date_format in date_formats:
-#         f.write(date_format + '\n')
 
 
 def handle_errors():
@@ -101,7 +98,7 @@ def print_error_message(msg):
 
 
 def check_extension(file):
-    file_name, file_extension = os.path.splitext(file)
+    _, file_extension = os.path.splitext(file)
     try:
         if file_extension.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError(f"{file} : Invalid file format. Supported formats: {SUPPORTED_EXTENSIONS}")
@@ -148,7 +145,7 @@ def update_counter(is_success: bool):
 
 
 def find_date_in_name(file):
-    file_name, file_extension = os.path.splitext(file)
+    file_name, _ = os.path.splitext(file)
     regex_pattern = [
             r"(\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
             r"(\d{2}[-._]\d{2}[-._]\d{4}[-._]\d{2}[-._]\d{2}[-._]\d{2})",
@@ -174,6 +171,10 @@ def find_date_in_name(file):
             continue
 
 
+def create_folder(path):
+    os.makedirs(path, exist_ok=True)
+
+
 def process_no_exif_image(file):
     no_exif_folder = os.path.join(destination_folder, "NoExif")
     os.makedirs(no_exif_folder, exist_ok=True)
@@ -181,7 +182,7 @@ def process_no_exif_image(file):
     if date:
         if sort:
             no_exif_folder = os.path.join(no_exif_folder, str(date.year))
-            os.makedirs(no_exif_folder, exist_ok=True)
+            create_folder(no_exif_folder)
 
         img_destination_path = os.path.join(no_exif_folder, file)
         is_success = copy_image_to_folder(file, img_destination_path)
@@ -196,17 +197,17 @@ def process_no_exif_image(file):
 
 def process_exif_image(img):
     image, name, ext, date = img.values()
-    dist_folder = destination_folder
+    _dist_folder = destination_folder
     if rename:
         name = f'{date.strftime(name_date_format)}_{name}{ext}'
     else:
         name = image
 
     if sort:
-        dist_folder = os.path.join(destination_folder, str(date.year))
-        os.makedirs(dist_folder, exist_ok=True)
+        _dist_folder = os.path.join(destination_folder, str(date.year))
+        create_folder(_dist_folder)
 
-    img_destination_path = os.path.join(dist_folder, name)
+    img_destination_path = os.path.join(_dist_folder, name)
     is_success = copy_image_to_folder(image, img_destination_path)
     change_created_date(date, img_destination_path)
 
@@ -259,7 +260,7 @@ def exif_date_change():
     for file in pbar:
         pbar.set_description("Progress", refresh=True)
         pbar.set_postfix(file="{}".format(file))
-        file_name, file_extension = os.path.splitext(file)
+        _, file_extension = os.path.splitext(file)
         check_extension(file)
         if file_extension.lower() in (".jpg", ".jpeg"):
             process_jpg_image(file)
