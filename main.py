@@ -34,7 +34,8 @@ separate = get_user_input("Do you want to separate PNG pictures into an other fo
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 name_date_format = "%Y-%m-%d_%H-%M-%S"
 
-source_folder = os.getcwd()
+
+source_folder = os.getcwd();
 destination_folder = os.path.join(source_folder, "Pictures")
 
 regex_pattern = [
@@ -171,8 +172,8 @@ def find_date_in_name(file, _regex_pattern: list = None):
             continue
 
 
-def process_no_exif_image(file, dst_folder):
-    no_exif_folder = os.path.join(dst_folder, "NoExif")
+def process_no_exif_image(file):
+    no_exif_folder = os.path.join(destination_folder, "NoExif")
     os.makedirs(no_exif_folder, exist_ok=True)
     date = find_date_in_name(file)
     if date:
@@ -187,25 +188,25 @@ def process_no_exif_image(file, dst_folder):
     return is_success
 
 
-def process_exif_image(img, dst_folder):
+def process_exif_image(img):
     image, name, ext, date = img.values()
     if rename:
         name = f'{date.strftime(name_date_format)}_{name}{ext}'
     else:
         name = image
     is_success = copy_image_to_folder(image, name)
-    img_destination_path = os.path.join(dst_folder, name)
+    img_destination_path = os.path.join(destination_folder, name)
     change_created_date(date, img_destination_path)
 
     return is_success
 
 
-def process_jpg_image(image, dst_folder):
+def process_jpg_image(image):
     with open(image, 'rb'):
         img = Image(image)
         image_name, image_extension = os.path.splitext(image)
         if not img.has_exif or not hasattr(img, "datetime"):
-            update_counter(process_no_exif_image(image, dst_folder))
+            update_counter(process_no_exif_image(image))
         else:
             _date, _time = img.datetime.split(' ')
             img_exif_date = datetime.strptime(_date + ' ' + _time, "%Y:%m:%d %H:%M:%S")
@@ -215,10 +216,11 @@ def process_jpg_image(image, dst_folder):
                 "ext": image_extension,
                 "date": img_exif_date
             }
-            update_counter(process_exif_image(img, dst_folder))
+            update_counter(process_exif_image(img))
 
 
-def process_png_image(image, dst_folder):
+def process_png_image(image):
+    dst_folder = destination_folder
     if separate:
         dst_folder = os.path.join(dst_folder, "PngFiles")
         os.makedirs(dst_folder, exist_ok=True)
@@ -232,9 +234,9 @@ def process_png_image(image, dst_folder):
         change_created_date(date, img_destination_path)
 
 
-def exif_date_change(src_folder, dst_folder):
-    os.makedirs(dst_folder, exist_ok=True)
-    files = [file for file in os.listdir(src_folder) if os.path.isfile(os.path.join(src_folder, file))]
+def exif_date_change():
+    os.makedirs(destination_folder, exist_ok=True)
+    files = [file for file in os.listdir(source_folder) if os.path.isfile(os.path.join(source_folder, file))]
     if "Timekeeper.exe" in files:
         files.remove("Timekeeper.exe")
     pbar = tqdm(files, leave=True, smoothing=1)
@@ -244,14 +246,14 @@ def exif_date_change(src_folder, dst_folder):
         file_name, file_extension = os.path.splitext(file)
         check_extension(file)
         if file_extension.lower() in (".jpg", ".jpeg"):
-            process_jpg_image(file, dst_folder)
+            process_jpg_image(file)
         elif file_extension.lower() == '.png':
-            process_png_image(file, dst_folder)
+            process_png_image(file)
         else:
             continue
 
     print_final_count(count, destination_folder)
 
 
-exif_date_change(source_folder, destination_folder)
+exif_date_change()
 input("Press enter to proceed...")
