@@ -19,6 +19,10 @@ from exif import Image
 from tqdm import tqdm
 
 count = Counter()
+errors = []
+
+SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
+name_date_format = "%Y-%m-%d_%H-%M-%S"
 
 
 def get_user_input(prompt):
@@ -31,10 +35,6 @@ sort = get_user_input("Do you want to organize your pictures by years [Y/n]")
 separate = get_user_input("Do you want to separate PNG pictures into an other folder ? [Y/n]")
 
 
-SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
-name_date_format = "%Y-%m-%d_%H-%M-%S"
-
-
 source_folder = os.getcwd()
 dir_name = os.path.basename(source_folder)
 dist_folder = pyip.inputStr('Dossier de destination (Default: ' + dir_name + '):', blank=True)
@@ -42,9 +42,6 @@ if not dist_folder:
     dist_folder = dir_name
 
 destination_folder = os.path.join(source_folder, dist_folder)
-
-
-errors = []
 
 
 def generate_date_time_formats():
