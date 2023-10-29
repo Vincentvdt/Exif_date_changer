@@ -52,12 +52,9 @@ errors = []
 
 def generate_date_time_formats():
     separators = ['-', '.', '_', '']
-    _date_formats = ["%Y{}%m{}%d".format(sep, sep) for sep in separators]
-    _date_formats.append("%Y%m%d")
-    time_formats = ["%H{}%M{}%S".format(sep, sep) for sep in separators]
-    time_formats.append("%H%M%S")
-    date_time_formats = [date_format + separator + time_format for date_format in _date_formats for separator in
-                         separators for time_format in time_formats]
+    _date_formats = [f"%Y{sep}%m{sep}%d" for sep in separators]
+    time_formats = [f"%H{sep}%M{sep}%S" for sep in separators]
+    date_time_formats = [f"{date_format}{separator}{time_format}" for date_format in _date_formats for separator in separators for time_format in time_formats]
     date_time_formats += _date_formats
     return date_time_formats
 
