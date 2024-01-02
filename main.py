@@ -37,12 +37,16 @@ def change_created_date(img_path, date):
         )
 
 
-def create_copy(source_file, dest_folder):
+def create_copy(source_file):
     relative_path = source_file.relative_to(SOURCE_FOLDER_PATH)
-    dest_file = Path(dest_folder, relative_path)
+    dest_file = Path(DEST_FOLDER_PATH, relative_path)
     dest_file.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_file, dest_file)
     return dest_file
+
+
+def handle_no_exif_date(picture):
+    pass
 
 
 def main():
@@ -51,8 +55,11 @@ def main():
         try:
             with Image.open(picture) as image:
                 date = get_exif_date(image)
-                new_picture = create_copy(picture, DEST_FOLDER_PATH)
-                change_created_date(new_picture, date)
+                new_picture = create_copy(picture)
+                if date is not None:
+                    change_created_date(new_picture, date)
+                else:
+                    handle_no_exif_date(image)
         except Exception as error:
             # handle the exception
             print("An exception occurred:", error)
